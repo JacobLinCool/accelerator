@@ -9,6 +9,11 @@ export interface IssueTrackingParams {
     issueNumber: number;
 }
 
+export interface CheckResult {
+    lastCheckTime: Date;
+    sleepDuration: WorkflowSleepDuration;
+}
+
 export class IssueTrackingWorkflow extends WorkflowEntrypoint<Env, IssueTrackingParams> {
     async run(event: WorkflowEvent<IssueTrackingParams>, step: WorkflowStep) {
         const { owner, repo, issueNumber } = event.payload;
@@ -22,34 +27,34 @@ export class IssueTrackingWorkflow extends WorkflowEntrypoint<Env, IssueTracking
             return { stopped: true as const };
         });
 
-        await step.do("Check Assignees", async () => {
-            return await agent.run(
+        function waitOrStop(name: string, t: WorkflowSleepDuration): Promise<{ stopped: boolean }> {
+            return Promise.race([step.sleep(name, t).then(() => ({ stopped: false as const })), stop]);
+        }
+
+        let result: CheckResult = { lastCheckTime: new Date(), sleepDuration: 0 };
+        result = await step.do<CheckResult>("Initialize Issue Tracking", async () => {
+            const sleepTool = createSleepTool();
+            await agent.run(
                 dedent`
-                1. Check your note for available engineers and assign one to the issue #${issueNumber} in ${owner}/${repo} if there are no assignees yet.
-                2. Check if there is a branch linked to the issue. If not, create a branch with prefix "issue-${issueNumber}-" and link it to the issue. (linkedBranch)
-                3. Add a comment to the issue, pinging the assigned engineer, to notify them about the assignment and branch creation.
+                1. Checkout the conversation history of issue #${issueNumber} in ${owner}/${repo}.
+                2. Check your note for available engineers and assign one to the issue #${issueNumber} if there are no assignees yet.
+                3. Check if there is a branch linked to the issue. (linkedBranches) If not, create a branch with prefix "issue-${issueNumber}-" and link it to the issue. (createLinkedBranch)
+                4. If any changes did, add a comment to the issue, pinging the assigned engineer, to notify them about the assignment and branch creation. (Don't say anything if no changes were made)
+                5. Set a reminder to check the task status again, the duration range is 1-3 days, based on the task complexity, urgency, and the assigned engineer's workload.
                 `,
-                [githubClient.tool()]
+                [githubClient.tool(), sleepTool.tool]
             );
+            return { lastCheckTime: new Date(), sleepDuration: sleepTool.sleeper.duration || "1 day" };
         });
 
-        let lastCheckTime = new Date();
-        const waitForFirstCheck = await step.do("Wait for first check", async () => {
-            return Promise.race([
-                step.sleep("wait-for-first-check", "1 day").then(() => {
-                    return { stopped: false as const, lastCheckTime: new Date() };
-                }),
-                stop,
-            ]);
-        });
-        if (waitForFirstCheck.stopped) {
+        let w = await waitOrStop("wait-for-initial-check", result.sleepDuration);
+        if (w.stopped) {
             return;
         }
-        lastCheckTime = waitForFirstCheck.lastCheckTime;
 
         for (let i = 0; i < 20; i++) {
             const sleepTool = createSleepTool();
-            const checkTaskStatus = await step.do(`Check Task Status ${i + 1}`, async () => {
+            result = await step.do<CheckResult>(`Check Task Status ${i + 1}`, async () => {
                 await agent.run(
                     dedent`
                         1. Check the status of the task in issue #${issueNumber} in ${owner}/${repo}.
@@ -60,20 +65,12 @@ export class IssueTrackingWorkflow extends WorkflowEntrypoint<Env, IssueTracking
                         `,
                     [githubClient.tool(), sleepTool.tool]
                 );
-                return { lastCheckTime: new Date() };
+                return { lastCheckTime: new Date(), sleepDuration: sleepTool.sleeper.duration || "1 day" };
             });
-            lastCheckTime = checkTaskStatus.lastCheckTime;
 
-            const waitForNextCheck = await step.do(`Wait for Next Check ${i + 1}`, async () => {
-                const duration = sleepTool.sleeper.duration || "1 day";
-                return Promise.race([
-                    step.sleep("wait-for-next-check", duration).then(() => {
-                        return { stopped: false as const };
-                    }),
-                    stop,
-                ]);
-            });
-            if (waitForNextCheck.stopped) {
+            w = await waitOrStop(`wait-for-check-${i + 1}`, result.sleepDuration);
+            if (w.stopped) {
+                console.log("Stopping issue tracking workflow after check", i + 1);
                 return;
             }
         }
