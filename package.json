@@ -1,0 +1,23 @@
+{
+	"name": "accelerator",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"deploy": "wrangler deploy",
+		"start": "wrangler dev",
+		"dev": "wrangler dev",
+		"cf-typegen": "wrangler types"
+	},
+	"devDependencies": {
+		"typescript": "^5.8.3",
+		"wrangler": "^4.20.0"
+	},
+	"dependencies": {
+		"@octokit/graphql": "^9.0.1",
+		"@octokit/rest": "^22.0.0",
+		"@octokit/webhooks": "^14.0.2",
+		"dedent": "^1.6.0",
+		"openai": "^5.3.0",
+		"zod": "^3.25.64"
+	}
+}

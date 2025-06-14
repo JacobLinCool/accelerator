@@ -1,0 +1,11 @@
+# Local development environment variables
+# Copy this to .dev.vars and fill in your actual values
+
+# GitHub Personal Access Token with repo permissions
+GITHUB_TOKEN=your_github_token_here
+
+# Secret key for verifying GitHub webhooks (you choose this)
+GITHUB_WEBHOOK_SECRET=your_webhook_secret_here
+
+# OpenAI API key
+OPENAI_API_KEY=your_openai_api_key_here
