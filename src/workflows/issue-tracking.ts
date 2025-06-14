@@ -36,6 +36,8 @@ export class IssueTrackingWorkflow extends WorkflowEntrypoint<Env, IssueTracking
             const sleepTool = createSleepTool();
             await agent.run(
                 dedent`
+                Current time is ${new Date().toISOString()}.
+                Please follow these steps to initialize the issue tracking workflow:
                 1. Checkout the conversation history of issue #${issueNumber} in ${owner}/${repo}.
                 2. Check your note for available engineers and assign one to the issue #${issueNumber} if there are no assignees yet.
                 3. Check if there is a branch linked to the issue. (linkedBranches) If not, create a branch with prefix "issue-${issueNumber}-" and link it to the issue. (createLinkedBranch)
@@ -57,8 +59,10 @@ export class IssueTrackingWorkflow extends WorkflowEntrypoint<Env, IssueTracking
             result = await step.do<CheckResult>(`Check Task Status ${i + 1}`, async () => {
                 await agent.run(
                     dedent`
-                        1. Check the status of the task in issue #${issueNumber} in ${owner}/${repo}.
-                        2. Check if the assigned engineer has made reasonable progress on the task since the last check.
+                        Last check was made at ${result.lastCheckTime.toISOString()}. Current time is ${new Date().toISOString()}.
+                        Please follow these steps to check the task status:
+                        1. Check the conversation history of issue #${issueNumber} in ${owner}/${repo}.
+                        2. Check if the assigned engineer has made reasonable progress in the linked branch after the last check.
                         3. If the assigned engineer has made progress, update the issue with the current status and any relevant information.
                         4. If the assigned engineer has not made progress, remind them to provide an update.
                         5. Set a reminder to check the task status again, the duration range is 1-3 days, based on the task complexity, urgency, and the assigned engineer's workload.
