@@ -2,36 +2,36 @@ import { Elysia, type Context } from "elysia";
 import { handleGitHubWebhook } from "./webhook";
 
 interface CF extends Context {
-    env: Env;
+	env: Env;
 }
 
 const app = new Elysia({ aot: false })
-    .onError(({ code, error, set }) => {
-        console.error(`Error ${code}:`, error);
+	.onError(({ code, error, set }) => {
+		console.error(`Error ${code}:`, error);
 
-        if (code === "NOT_FOUND") {
-            set.status = 404;
-            return { error: "Not Found" };
-        }
+		if (code === "NOT_FOUND") {
+			set.status = 404;
+			return { error: "Not Found" };
+		}
 
-        if (code === "VALIDATION") {
-            set.status = 400;
-            return { error: "Validation Error", details: error.message };
-        }
+		if (code === "VALIDATION") {
+			set.status = 400;
+			return { error: "Validation Error", details: error.message };
+		}
 
-        set.status = 500;
-        return { error: "Internal Server Error" };
-    })
-    .get("/favicon*", () => {
-        throw new Error("Not Found");
-    })
-    .get("/", () => ({
-        message: "Accelerator API is running",
-        timestamp: new Date().toISOString(),
-    }))
-    .post("/webhook/github", async ({ env, request }: CF) => {
-        return await handleGitHubWebhook(request, env);
-    });
+		set.status = 500;
+		return { error: "Internal Server Error" };
+	})
+	.get("/favicon*", () => {
+		throw new Error("Not Found");
+	})
+	.get("/", () => ({
+		message: "Accelerator API is running",
+		timestamp: new Date().toISOString(),
+	}))
+	.post("/webhook/github", async ({ env, request }: CF) => {
+		return await handleGitHubWebhook(request, env);
+	}, { parse: [({ request }) => request] });
 // .group("/test", (app) =>
 //     app
 //         .get("/", async ({ request, env }: CF) => {
@@ -80,18 +80,18 @@ const app = new Elysia({ aot: false })
 
 // Export for Cloudflare Workers
 export default {
-    async fetch(req: Request, env: Env): Promise<Response> {
-        try {
-            const response = await app.decorate({ env }).handle(req);
-            return response;
-        } catch (error) {
-            console.error("Unhandled error:", error);
-            return new Response(JSON.stringify({ error: "Internal Server Error" }), {
-                status: 500,
-                headers: { "Content-Type": "application/json" },
-            });
-        }
-    },
+	async fetch(req: Request, env: Env): Promise<Response> {
+		try {
+			const response = await app.decorate({ env }).handle(req);
+			return response;
+		} catch (error) {
+			console.error("Unhandled error:", error);
+			return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+				status: 500,
+				headers: { "Content-Type": "application/json" },
+			});
+		}
+	},
 };
 
 export { IssueTrackingWorkflow, TestWorkflow } from "./workflows";
