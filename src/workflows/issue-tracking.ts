@@ -40,7 +40,7 @@ export class IssueTrackingWorkflow extends WorkflowEntrypoint<Env, IssueTracking
                 Please follow these steps to initialize the issue tracking workflow:
                 1. Checkout the conversation history of issue #${issueNumber} in ${owner}/${repo}.
                 2. Check your note for available engineers and assign one to the issue #${issueNumber} if there are no assignees yet.
-                3. Check if there is a branch linked to the issue. (linkedBranches) If not, create a branch with prefix "issue-${issueNumber}-" and link it to the issue. (createLinkedBranch)
+                3. Check if there is a branch linked to the issue. (linkedBranches) If not, create a branch with prefix "issue-${issueNumber}-" and link it to the issue. (must use createLinkedBranch in graphql)
                 4. If any changes did, add a comment to the issue, pinging the assigned engineer, to notify them about the assignment and branch creation. (Don't say anything if no changes were made)
                 5. Set a reminder to check the task status again, the duration range is 1-3 days, based on the task complexity, urgency, and the assigned engineer's workload.
                 `,
