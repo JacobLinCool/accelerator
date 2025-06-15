@@ -42,7 +42,7 @@ export async function handleGitHubWebhook(req: Request, env: Env): Promise<Respo
         }
 
         // Verify webhook signature
-        const githubClient = new GitHubClient(webhookData.repository.owner.login, webhookData.repository.name, env.GITHUB_TOKEN, env.GITHUB_WEBHOOK_SECRET);
+        const githubClient = GitHubClient.create(webhookData.repository.owner.login, webhookData.repository.name, env);
 
         const isValid = await githubClient.verifyWebhookSignature(payload, signature);
         if (!isValid) {

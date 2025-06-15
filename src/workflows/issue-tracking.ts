@@ -19,7 +19,7 @@ export class IssueTrackingWorkflow extends WorkflowEntrypoint<Env, IssueTracking
         const { owner, repo, issueNumber } = event.payload;
 
         // Initialize services
-        const githubClient = new GitHubClient(owner, repo, this.env.GITHUB_TOKEN, this.env.GITHUB_WEBHOOK_SECRET);
+        const githubClient = GitHubClient.create(owner, repo, this.env);
         const agent = new Agent(this.env.OPENAI_API_KEY);
 
         const stop = step.waitForEvent("stop-tracking", { type: "stop-tracking" }).then(() => {

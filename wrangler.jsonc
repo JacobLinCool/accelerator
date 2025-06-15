@@ -29,7 +29,11 @@
 	"vars": {
 		// "GITHUB_TOKEN": "",
 		// "GITHUB_WEBHOOK_SECRET": "",
-		// "OPENAI_API_KEY": ""
+		// "OPENAI_API_KEY": "",
+		// GitHub App authentication (alternative to GITHUB_TOKEN)
+		// "GITHUB_APP_ID": "",
+		// "GITHUB_PRIVATE_KEY": "",
+		// "GITHUB_INSTALLATION_ID": ""
 	}
 	/**
 	 * Smart Placement

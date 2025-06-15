@@ -26,7 +26,7 @@ A mindful AI project manager that helps engineering teams move fast while mainta
 1. Clone the repository:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/JacobLinCool/accelerator.git
 cd accelerator
 ```
 
@@ -36,14 +36,15 @@ cd accelerator
 pnpm install
 ```
 
-1. Configure environment variables in `wrangler.jsonc`:
+1. Configure secrets:
 
 ```jsonc
 {
   "vars": {
-    "GITHUB_TOKEN": "your-github-token",
-    "GITHUB_WEBHOOK_SECRET": "your-webhook-secret", 
-    "OPENAI_API_KEY": "your-openai-api-key"
+    // don't put your secrets here, use wrangler secret instead
+    // "GITHUB_TOKEN": "your-github-token",
+    // "GITHUB_WEBHOOK_SECRET": "your-webhook-secret", 
+    // "OPENAI_API_KEY": "your-openai-api-key"
   }
 }
 ```
@@ -73,14 +74,6 @@ pnpm run deploy
    - Create a linked branch with prefix `issue-{number}-`
    - Add a comment notifying the assigned engineer
 3. **Continuous Monitoring**: The system tracks progress and can suggest adjustments
-
-### Workflow Status
-
-Check workflow status by visiting:
-
-```
-https://your-worker.your-subdomain.workers.dev/status?instanceId=<workflow-id>
-```
 
 ### Development
 
