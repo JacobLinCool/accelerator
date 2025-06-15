@@ -22,7 +22,7 @@ export class IssueTrackingWorkflow extends WorkflowEntrypoint<Env, IssueTracking
         const githubClient = GitHubClient.create(owner, repo, this.env);
         const agent = new Agent(this.env.OPENAI_API_KEY);
 
-        const stop = step.waitForEvent("stop-tracking", { type: "stop-tracking" }).then(() => {
+        const stop = step.waitForEvent("stop-tracking", { type: "stop-tracking", timeout: "1 year" }).then(() => {
             console.log("Stopping issue tracking workflow");
             return { stopped: true as const };
         });
@@ -36,6 +36,16 @@ export class IssueTrackingWorkflow extends WorkflowEntrypoint<Env, IssueTracking
             const sleepTool = createSleepTool();
             await agent.run(
                 dedent`
+                Example code to link issue to branch:
+                \`\`\`
+                mutation {
+                    createLinkedBranch(input: {repositoryId:"...", issueId:"....", name:"...", oid:"..."}) {
+                        linkedBranch { id ref { name }
+                        }
+                    }
+                }
+                \`\`\`
+                ---
                 Current time is ${new Date().toISOString()}.
                 Please follow these steps to initialize the issue tracking workflow:
                 1. Checkout the conversation history of issue #${issueNumber} in ${owner}/${repo}.

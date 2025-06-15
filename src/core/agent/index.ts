@@ -11,11 +11,12 @@ export class Agent {
     }
 
     async run(task: string, tools: Tool[] = []): Promise<string> {
-        const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+        // Keep track of conversation context as simple text
+        let input: OpenAI.Responses.ResponseInput = [
             {
-                role: "developer",
-                content: `${GENERAL_PROMPT}\n\n---\n${task}`,
-            },
+                'role': 'developer',
+                'content': `${GENERAL_PROMPT}\n\n---\n${task}`,
+            }
         ];
         tools = [...tools, taskCompletionTool];
 
@@ -25,62 +26,71 @@ export class Agent {
                 tools = [toolLimitReachedTool];
             }
 
-            const res = await this.client.chat.completions.create({
+            // Use the Responses API which is designed for tool use
+            const res = await this.client.responses.create({
                 model: "o4-mini",
-                messages,
+                input,
                 tools: tools.map((tool) => ({
                     type: "function",
-                    function: tool.def,
+                    ...tool.def,
                 })),
                 tool_choice: "required",
             });
 
-            const choice = res.choices[0];
-            if (!choice || !choice.message) {
-                throw new Error("No response from OpenAI");
-            }
-
-            const message = choice.message;
-            if (message.tool_calls) {
-                messages.push(message);
-
-                if (message.content) {
-                    console.log("Message with tool calls:", message.content);
-                }
-
-                for (const toolCall of message.tool_calls) {
-                    if (toolCall.function) {
-                        const tool = tools.find((t) => t.def.name === toolCall.function.name);
+            // Handle different response statuses
+            if (res.status === 'completed') {
+                // Response completed successfully
+                // Process tool calls from the output
+                for (const outputItem of res.output) {
+                    if (outputItem.type === 'function_call') {
+                        const toolCall = outputItem;
+                        const tool = tools.find((t) => t.def.name === toolCall.name);
                         if (!tool) {
-                            throw new Error(`Tool ${toolCall.function.name} not found`);
+                            throw new Error(`Tool ${toolCall.name} not found`);
                         }
-                        console.log(`Calling tool: ${toolCall.function.name} with args:`, toolCall.function.arguments);
 
-                        if (toolCall.function.name === DONE_TOOL_NAME) {
-                            return JSON.parse(toolCall.function.arguments).message as string;
+                        console.log(`Calling tool: ${toolCall.name} with args:`, toolCall.arguments);
+
+                        if (toolCall.name === DONE_TOOL_NAME) {
+                            const args = typeof toolCall.arguments === 'string'
+                                ? JSON.parse(toolCall.arguments)
+                                : toolCall.arguments;
+                            return args.message as string;
                         }
 
                         try {
-                            const result = await tool.exe(JSON.parse(toolCall.function.arguments));
-                            messages.push({
-                                role: "tool",
-                                tool_call_id: toolCall.id,
-                                content: JSON.stringify(result),
+                            const args = typeof toolCall.arguments === 'string'
+                                ? JSON.parse(toolCall.arguments)
+                                : toolCall.arguments;
+                            const result = await tool.exe(args);
+
+                            input.push(toolCall);
+                            input.push({
+                                type: 'function_call_output',
+                                call_id: toolCall.call_id,
+                                output: JSON.stringify(result),
                             });
                         } catch (error) {
-                            console.error(`Error calling tool ${toolCall.function.name}:`, error);
-                            messages.push({
-                                role: "tool",
-                                tool_call_id: toolCall.id,
-                                content: JSON.stringify({
-                                    error: `Failed to execute tool ${toolCall.function.name}: ${error instanceof Error ? error.message : String(error)}`,
-                                }),
+                            console.error(`Error calling tool ${toolCall.name}:`, error);
+                            input.push({
+                                type: 'function_call_output',
+                                call_id: toolCall.call_id,
+                                output: JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
                             });
                         }
+                    } else if (outputItem.type === 'reasoning') {
+                        input.push(outputItem);
                     }
                 }
+            } else if (res.status === 'in_progress') {
+                // Handle in-progress status - might need to poll or wait
+                throw new Error("Response is still in progress - this shouldn't happen with synchronous calls");
+            } else if (res.status === 'failed') {
+                throw new Error("Response failed");
             } else {
-                throw new Error("No tool calls in OpenAI response");
+                // Fallback for unknown response structure
+                console.log("Unknown response structure:", res);
+                throw new Error("Unknown response structure from OpenAI");
             }
 
             toolCalls++;

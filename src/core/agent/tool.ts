@@ -1,6 +1,9 @@
 import { OpenAI } from "openai";
 
-export type Tool<O = any> = { def: OpenAI.ChatCompletionTool["function"]; exe: (...param: any[]) => Promise<O> };
+export type Tool<O = any> = {
+    def: Omit<OpenAI.Responses.FunctionTool, "type">;
+    exe: (...param: any[]) => Promise<O>
+};
 
 export const DONE_TOOL_NAME = "done";
 
